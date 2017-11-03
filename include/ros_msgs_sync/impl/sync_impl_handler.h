@@ -54,6 +54,166 @@
 
 // std header
 #include <vector>
+#include <tuple>
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <utility>
+#include <type_traits>
+#include <memory>
+#include <tuple>
+
+//////////////////////////
+// cpp11 index_sequence //
+//////////////////////////
+
+template <std::size_t... Ints>
+struct index_sequence
+{
+    using type = index_sequence;
+    using value_type = std::size_t;
+    static constexpr std::size_t size() noexcept { return sizeof...(Ints); }
+};
+
+// --------------------------------------------------------------
+
+template <class Sequence1, class Sequence2>
+struct _merge_and_renumber;
+
+template <std::size_t... I1, std::size_t... I2>
+struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
+  : index_sequence<I1..., (sizeof...(I1)+I2)...>
+{ };
+
+ // --------------------------------------------------------------
+
+template <std::size_t N>
+struct make_index_sequence
+  : _merge_and_renumber<typename make_index_sequence<N/2>::type,
+                        typename make_index_sequence<N - N/2>::type>
+{ };
+
+template<> struct make_index_sequence<0> : index_sequence<>  { };
+template<> struct make_index_sequence<1> : index_sequence<0> { };
+
+template <typename T>
+struct add_shared_ptr
+{
+  using type = std::shared_ptr<T>;
+};
+
+template <typename T>
+using add_shared_ptr_t = typename add_shared_ptr<T>::type;
+
+template <typename T>
+struct to_each_add_shared_ptr;
+
+template <typename... Args>
+struct to_each_add_shared_ptr<std::tuple<Args...>>
+{
+  using type = std::tuple<add_shared_ptr_t<Args>...>;
+};
+
+template <typename F, typename T>
+struct apply;
+
+template <template<class...> class F, typename... Args>
+struct apply<F<>, std::tuple<Args...>>
+{
+  using type = std::tuple<typename F<Args>::type...>;
+};
+
+template <typename... T>
+struct type_list { static constexpr std::size_t size = sizeof...(T); };
+
+template<typename List, typename T>
+struct append;
+
+template<typename... TL, typename T>
+struct append <type_list<TL...>, T> {
+    using type = type_list<TL..., T>;
+};
+
+template<typename L, typename R>
+using append_t = typename append<L,R>::type;
+
+template <typename... Args>
+struct Synchro
+{
+
+};
+
+template <typename... Args>
+using SynchroPtr = add_shared_ptr_t<Synchro<Args...>>;
+
+template <typename T, typename S>
+struct subTuple;
+
+template <template <std::size_t...> class S, std::size_t... Indices, typename... Args>
+struct subTuple < std::tuple<Args...>, S<Indices...> >
+{
+    using type = decltype( std::make_tuple (std::get<Indices>( std::declval<std::tuple<Args...>>() )...) );
+};
+
+template <typename T>
+struct tupleToSynchro;
+
+template <typename... T>
+struct tupleToSynchro<std::tuple<T...>>
+{
+    using type = Synchro<T...>;
+};
+
+template <std::size_t I, typename... Args>
+struct toSynchro
+{
+    using tuple_t = std::tuple<Args...>;
+
+    using i_seq = typename make_index_sequence<I>::type;
+
+    using type = typename tupleToSynchro<typename subTuple<tuple_t, i_seq>::type>::type;
+};
+
+template<typename L, typename R>
+struct tuple_cat;
+
+template<typename... TL, typename... TR>
+struct tuple_cat<std::tuple<TL...>, std::tuple<TR...>> {
+    using type = std::tuple<TL..., TR...>;
+};
+
+template <std::size_t I, typename... Args>
+struct toSynchros_
+{
+    using type = tuple_cat< std::tuple< typename toSynchro<I, Args...>::type >,
+                            typename toSynchros_<I-1, Args...>::type>;
+};
+
+template <typename T>
+struct toSynchros_<1, T>
+{
+    using type = std::tuple<>;
+};
+
+template <typename... Args>
+struct toSynchros : toSynchros_<sizeof...(Args), Args... >
+{
+
+};
+
+using test_t = toSynchro<2, int, int, char>::type;
+
+using test_t2 = typename toSynchros<int, double, char>::type;
+
+using tt= test_t2::TT;
+
+static_assert(std::is_same<test_t, Synchro<int, int> >::value, "");
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 namespace
 {
@@ -78,17 +238,118 @@ namespace
   };
 }
 
+//////////////////////////
+// cpp11 index_sequence //
+//////////////////////////
+
+template <std::size_t... Ints>
+struct index_sequence
+{
+    using type = index_sequence;
+    using value_type = std::size_t;
+    static constexpr std::size_t size() noexcept { return sizeof...(Ints); }
+};
+
+// --------------------------------------------------------------
+
+template <class Sequence1, class Sequence2>
+struct _merge_and_renumber;
+
+template <std::size_t... I1, std::size_t... I2>
+struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
+  : index_sequence<I1..., (sizeof...(I1)+I2)...>
+{ };
+
+ // --------------------------------------------------------------
+
+template <std::size_t N>
+struct make_index_sequence
+  : _merge_and_renumber<typename make_index_sequence<N/2>::type,
+                        typename make_index_sequence<N - N/2>::type>
+{ };
+
+template<> struct make_index_sequence<0> : index_sequence<>  { };
+template<> struct make_index_sequence<1> : index_sequence<0> { };
+
+//////////////////////////
+// cpp11 tuple for_each //
+//////////////////////////
+
+
+
+template<typename... Ts, typename... Args>
+void for_each(std::integral_constant<std::size_t, sizeof...(Ts)>, std::tuple<Ts...> &, Args&&...) { }
+
+template<std::size_t I, typename... Ts, typename... Args, typename = typename std::enable_if<I!=sizeof ...(Ts)>::type >
+void for_each(std::integral_constant<size_t, I>, std::tuple<Ts...>& t, Args&&... args)
+{
+  do_call(std::get<I>(t), std::forward<Args>(args)...);
+
+  for_each(std::integral_constant<size_t, I + 1>(), t, std::forward<Args>(args)...);
+}
+
+template<typename... Ts, typename... Args>
+void for_each(std::tuple<Ts...>& t, Args&&... args)
+{
+  for_each(std::integral_constant<size_t, 0>(), t, std::forward<Args>(args)...);
+}
+
+template <typename T>
+struct add_shared_ptr
+{
+  using type = boost::shared_ptr<T>;
+};
+
+template <typename T>
+using add_shared_ptr_t = typename add_shared_ptr<T>::type;
+
+template <typename... T>
+struct type_list { static constexpr std::size_t size = sizeof...(T); };
+
+// Metafunction concat: Concatenate two type_list
+template<typename L, typename R>
+struct concat;
+
+template<typename... TL, typename... TR>
+struct concat <type_list<TL...>, type_list<TR...>> {
+    using type = type_list<TL..., TR...>;
+};
+
+template<typename L, typename R>
+using concat_t = typename concat<L,R>::type;
+
+template<typename List, typename T>
+struct append;
+
+template<typename... TL, typename T>
+struct append <type_list<TL...>, T> {
+    using type = type_list<TL..., T>;
+};
+
+template<typename L, typename R>
+using append_t = typename append<L,R>::type;
+
 /**
 * class SyncImplHandler
 * It synchronises ros messages topic callbacks (up to 8)
 * Its callback is pure virtual so that it can be easily
 * defined in a derived class
 */
-template <typename M>
+template <typename... Args>
 class SyncImplHandler
 {
-
 public:
+
+  template <typename... Args>
+  using SynchronizerPolicy = message_filters::sync_policies::ApproximateTime<Args...>;
+
+  template <typename... Args>
+  using SynchronizerPolicyPtr = add_shared_ptr_t<SynchronizerPolicy<Args...>>;
+
+  template<class T> struct traits_synchronizer
+  {
+    using type = message_filters::Synchronizer<T>;
+  };
 
   /**
   * Constructor.
@@ -97,28 +358,26 @@ public:
   */
   SyncImplHandler();
 
-  /**
-  * Destructor.
-  */
-  ~SyncImplHandler() {}
+  virtual ~SyncImplHandler() = default;
 
   bool start();
 
-  std::vector<std::string> getTopics()
-    { return _topics; }
+  inline const std::vector<std::string>& getTopics() const noexcept
+  {
+    return _topics;
+  }
 
 protected:
 
   template<class T> struct Sync
   {
-    typedef message_filters::Synchronizer<T> type;
-    typedef boost::shared_ptr<message_filters::Synchronizer<T> > Ptr;
+    using type = message_filters::Synchronizer<T>;
   };
 
-  typedef boost::shared_ptr<M const> MPtr;
+//  typedef boost::shared_ptr<M const> MPtr;
   typedef message_filters::Subscriber<M> Sub;
 
-  typedef boost::function<void (const std::vector<MPtr>&)> callbackPtr;
+  typedef boost::function<void (const std::tuple<add_shared_ptr<Args>...>&)> callbackPtr;
 
   typedef sp::ApproximateTime<M, M> ApproxSync2;
   typedef sp::ApproximateTime<M, M, M> ApproxSync3;
@@ -138,6 +397,14 @@ protected:
                           typename Sync<ApproxSync8>::Ptr,
                           typename Sync<ApproxSync9>::Ptr > VariantApproxSync;
 
+  template <std::size_t I, template <class... Args> class Tuple>
+  struct dunno<Tuple<Args...>>
+  {
+    using type = SynchronizerPolicyPtr<decltype(std::get <make_index_sequence<sizeof...(T)> >(std::declval<Tuple<Args...>>{}))...>;
+  };
+
+  using SynchronizerVariant = boost::variant< SynchronizerPolicyPtr< nullptr > >;
+
   /**
   * A pure virtual member.
   * @param vecMPtr : std::vector< M >
@@ -155,6 +422,9 @@ protected:
   virtual bool initSyncSubs();
 
   std::vector<std::string> _topics;
+
+  std::tuple<add_shared_ptr_t<message_filters::Subscriber<Args>>...> subscribers_;
+  boost::shared_ptr<SynchronizerVariant> synchronizer_;
 
   boost::ptr_vector<Sub> _msg_subs;
   boost::shared_ptr<VariantApproxSync> _approx_synchronizer;

@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ros_msgs_sync)
 
+# Check that the compoiler has c++11 support
+# Crash otherwise.
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+if(COMPILER_SUPPORTS_CXX11)
+  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has C++11 support.")
+else()
+  message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
+
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -32,8 +43,16 @@ add_library(${PROJECT_NAME}
   include/${PROJECT_NAME}/impl/sync_impl_transport_handler.cpp
 )
 target_link_libraries(${PROJECT_NAME}
-   ${catkin_LIBRARIES} 
+   ${catkin_LIBRARIES}
 )
+# Set required C++11 flag
+if(CMAKE_VERSION VERSION_LESS "3.1")
+  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-std=c++11")
+else()
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 11)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_EXTENSIONS OFF)
+endif()
 
 ## Declare a cpp executable
 
@@ -47,30 +66,30 @@ target_link_libraries(img_sync_disp
    ${catkin_LIBRARIES} ${PROJECT_NAME}
 )
 
-add_executable(ptcld_sync_save sample/sample_sync_pointcloud.cpp)
-target_link_libraries(ptcld_sync_save
-   ${catkin_LIBRARIES} ${PROJECT_NAME}
-)
+#add_executable(ptcld_sync_save sample/sample_sync_pointcloud.cpp)
+#target_link_libraries(ptcld_sync_save
+#   ${catkin_LIBRARIES} ${PROJECT_NAME}
+#)
 
 #############
 ## Install ##
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS img_trp_sync_save img_sync_disp ${PROJECT_NAME}
-   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+#install(TARGETS img_trp_sync_save img_sync_disp ${PROJECT_NAME}
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 
-## Mark cpp header files for installation
-install(DIRECTORY include/${PROJECT_NAME}/
-   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-   FILES_MATCHING PATTERN "*.h"
-)
+### Mark cpp header files for installation
+#install(DIRECTORY include/${PROJECT_NAME}/
+#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+#   FILES_MATCHING PATTERN "*.h"
+#)
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-install(DIRECTORY
-   launch
-   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
+### Mark other files for installation (e.g. launch and bag files, etc.)
+#install(DIRECTORY
+#   launch
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+#)
