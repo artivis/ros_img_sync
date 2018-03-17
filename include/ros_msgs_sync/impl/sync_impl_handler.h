@@ -100,13 +100,46 @@ template<> struct make_index_sequence<0> : index_sequence<>  { };
 template<> struct make_index_sequence<1> : index_sequence<0> { };
 
 template <typename T>
+using shared_pointer = boost::shared_ptr<T>;
+
+template <typename T, typename... Args>
+shared_pointer<T> make_shared(Args&&... args)
+{
+  return boost::make_shared<T>(std::forward<Args>(args)...);
+}
+
+//////////////////////////
+// Helper to add shared_ptr to type //
+//////////////////////////
+
+template <typename T>
 struct add_shared_ptr
 {
-  using type = std::shared_ptr<T>;
+  using type = shared_pointer<T>;
 };
 
 template <typename T>
 using add_shared_ptr_t = typename add_shared_ptr<T>::type;
+
+//////////////////////////
+// Helper to remove shared_ptr from type //
+//////////////////////////
+
+template <typename T>
+struct rm_shared_ptr;
+
+template <typename T>
+struct rm_shared_ptr< shared_pointer<T> >
+{
+  using type = T;
+};
+
+template <typename T>
+using rm_shared_ptr_t = typename rm_shared_ptr<T>::type;
+
+//////////////////////////
+// Helper to add shared_ptr to each type in tuple //
+//////////////////////////
 
 template <typename T>
 struct to_each_add_shared_ptr;
@@ -117,37 +150,41 @@ struct to_each_add_shared_ptr<std::tuple<Args...>>
   using type = std::tuple<add_shared_ptr_t<Args>...>;
 };
 
-template <typename F, typename T>
-struct apply;
+//template <typename F, typename T>
+//struct apply;
 
-template <template<class...> class F, typename... Args>
-struct apply<F<>, std::tuple<Args...>>
-{
-  using type = std::tuple<typename F<Args>::type...>;
-};
+//template <template<class...> class F, typename... Args>
+//struct apply<F<>, std::tuple<Args...>>
+//{
+//  using type = std::tuple<typename F<Args>::type...>;
+//};
 
-template <typename... T>
-struct type_list { static constexpr std::size_t size = sizeof...(T); };
+//template <typename... T>
+//struct type_list { static constexpr std::size_t size = sizeof...(T); };
 
-template<typename List, typename T>
-struct append;
+//template<typename List, typename T>
+//struct append;
 
-template<typename... TL, typename T>
-struct append <type_list<TL...>, T> {
-    using type = type_list<TL..., T>;
-};
+//template<typename... TL, typename T>
+//struct append <type_list<TL...>, T> {
+//    using type = type_list<TL..., T>;
+//};
 
-template<typename L, typename R>
-using append_t = typename append<L,R>::type;
+//template<typename L, typename R>
+//using append_t = typename append<L,R>::type;
 
-template <typename... Args>
-struct Synchro
-{
+//template <typename... Args>
+//struct Synchro
+//{
 
-};
+//};
 
-template <typename... Args>
-using SynchroPtr = add_shared_ptr_t<Synchro<Args...>>;
+//template <typename... Args>
+//using SynchroPtr = add_shared_ptr_t<Synchro<Args...>>;
+
+//////////////////////////
+// Helper to create a tuple with n args in variadic pack //
+//////////////////////////
 
 template <typename T, typename S>
 struct subTuple;
@@ -158,24 +195,28 @@ struct subTuple < std::tuple<Args...>, S<Indices...> >
     using type = decltype( std::make_tuple (std::get<Indices>( std::declval<std::tuple<Args...>>() )...) );
 };
 
-template <typename T>
-struct tupleToSynchro;
+//template <typename T>
+//struct tupleToSynchro;
 
-template <typename... T>
-struct tupleToSynchro<std::tuple<T...>>
-{
-    using type = Synchro<T...>;
-};
+//template <typename... T>
+//struct tupleToSynchro<std::tuple<T...>>
+//{
+//    using type = Synchro<T...>;
+//};
 
-template <std::size_t I, typename... Args>
-struct toSynchro
-{
-    using tuple_t = std::tuple<Args...>;
+//template <std::size_t I, typename... Args>
+//struct toSynchro
+//{
+//    using tuple_t = std::tuple<Args...>;
 
-    using i_seq = typename make_index_sequence<I>::type;
+//    using i_seq = typename make_index_sequence<I>::type;
 
-    using type = typename tupleToSynchro<typename subTuple<tuple_t, i_seq>::type>::type;
-};
+//    using type = typename tupleToSynchro<typename subTuple<tuple_t, i_seq>::type>::type;
+//};
+
+//////////////////////////
+// Helper to concat tuple //
+//////////////////////////
 
 template<typename L, typename R>
 struct tuple_cat;
@@ -185,35 +226,34 @@ struct tuple_cat<std::tuple<TL...>, std::tuple<TR...>> {
     using type = std::tuple<TL..., TR...>;
 };
 
-template <std::size_t I, typename... Args>
-struct toSynchros_
-{
-    using type = tuple_cat< std::tuple< typename toSynchro<I, Args...>::type >,
-                            typename toSynchros_<I-1, Args...>::type>;
-};
+//template <std::size_t I, typename... Args>
+//struct toSynchros_
+//{
+//    using type = tuple_cat< std::tuple< typename toSynchro<I, Args...>::type >,
+//                            typename toSynchros_<I-1, Args...>::type>;
+//};
 
-template <typename T>
-struct toSynchros_<1, T>
-{
-    using type = std::tuple<>;
-};
+//template <typename... Args>
+//struct toSynchros_<1, Args...>
+//{
+//  using type = std::tuple<>;
+//};
 
-template <typename... Args>
-struct toSynchros : toSynchros_<sizeof...(Args), Args... >
-{
+//template <typename... Args>
+//struct toSynchros : toSynchros_<sizeof...(Args), Args... >
+//{
 
-};
+//};
 
-using test_t = toSynchro<2, int, int, char>::type;
+//using test_t = toSynchro<2, int, int, char>::type;
 
-using test_t2 = typename toSynchros<int, double, char>::type;
+//using test_t2 = typename toSynchros<int, double, char>::type;
 
-using tt= test_t2::TT;
+//using tt= test_t2::TT;
 
-static_assert(std::is_same<test_t, Synchro<int, int> >::value, "");
+//static_assert(std::is_same<test_t, Synchro<int, int> >::value, "");
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 namespace
 {
@@ -238,96 +278,7 @@ namespace
   };
 }
 
-//////////////////////////
-// cpp11 index_sequence //
-//////////////////////////
 
-template <std::size_t... Ints>
-struct index_sequence
-{
-    using type = index_sequence;
-    using value_type = std::size_t;
-    static constexpr std::size_t size() noexcept { return sizeof...(Ints); }
-};
-
-// --------------------------------------------------------------
-
-template <class Sequence1, class Sequence2>
-struct _merge_and_renumber;
-
-template <std::size_t... I1, std::size_t... I2>
-struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
-  : index_sequence<I1..., (sizeof...(I1)+I2)...>
-{ };
-
- // --------------------------------------------------------------
-
-template <std::size_t N>
-struct make_index_sequence
-  : _merge_and_renumber<typename make_index_sequence<N/2>::type,
-                        typename make_index_sequence<N - N/2>::type>
-{ };
-
-template<> struct make_index_sequence<0> : index_sequence<>  { };
-template<> struct make_index_sequence<1> : index_sequence<0> { };
-
-//////////////////////////
-// cpp11 tuple for_each //
-//////////////////////////
-
-
-
-template<typename... Ts, typename... Args>
-void for_each(std::integral_constant<std::size_t, sizeof...(Ts)>, std::tuple<Ts...> &, Args&&...) { }
-
-template<std::size_t I, typename... Ts, typename... Args, typename = typename std::enable_if<I!=sizeof ...(Ts)>::type >
-void for_each(std::integral_constant<size_t, I>, std::tuple<Ts...>& t, Args&&... args)
-{
-  do_call(std::get<I>(t), std::forward<Args>(args)...);
-
-  for_each(std::integral_constant<size_t, I + 1>(), t, std::forward<Args>(args)...);
-}
-
-template<typename... Ts, typename... Args>
-void for_each(std::tuple<Ts...>& t, Args&&... args)
-{
-  for_each(std::integral_constant<size_t, 0>(), t, std::forward<Args>(args)...);
-}
-
-template <typename T>
-struct add_shared_ptr
-{
-  using type = boost::shared_ptr<T>;
-};
-
-template <typename T>
-using add_shared_ptr_t = typename add_shared_ptr<T>::type;
-
-template <typename... T>
-struct type_list { static constexpr std::size_t size = sizeof...(T); };
-
-// Metafunction concat: Concatenate two type_list
-template<typename L, typename R>
-struct concat;
-
-template<typename... TL, typename... TR>
-struct concat <type_list<TL...>, type_list<TR...>> {
-    using type = type_list<TL..., TR...>;
-};
-
-template<typename L, typename R>
-using concat_t = typename concat<L,R>::type;
-
-template<typename List, typename T>
-struct append;
-
-template<typename... TL, typename T>
-struct append <type_list<TL...>, T> {
-    using type = type_list<TL..., T>;
-};
-
-template<typename L, typename R>
-using append_t = typename append<L,R>::type;
 
 /**
 * class SyncImplHandler
@@ -339,6 +290,11 @@ template <typename... Args>
 class SyncImplHandler
 {
 public:
+
+  constexpr std::size_t SYNCHRONIZER_LIMIT = 8;
+
+  static_assert(std::integral_constant<bool, (sizeof...(Args) <= SYNCHRONIZER_LIMIT)>::value,
+                "Too many template arguments !");
 
   template <typename... Args>
   using SynchronizerPolicy = message_filters::sync_policies::ApproximateTime<Args...>;
@@ -364,46 +320,91 @@ public:
 
   inline const std::vector<std::string>& getTopics() const noexcept
   {
-    return _topics;
+    return topics_;
   }
 
 protected:
 
-  template<class T> struct Sync
-  {
-    using type = message_filters::Synchronizer<T>;
-  };
-
-//  typedef boost::shared_ptr<M const> MPtr;
-  typedef message_filters::Subscriber<M> Sub;
+  template<class T>
+  using Synchronizer = message_filters::Synchronizer<T>;
 
   typedef boost::function<void (const std::tuple<add_shared_ptr<Args>...>&)> callbackPtr;
 
-  typedef sp::ApproximateTime<M, M> ApproxSync2;
-  typedef sp::ApproximateTime<M, M, M> ApproxSync3;
-  typedef sp::ApproximateTime<M, M, M, M> ApproxSync4;
-  typedef sp::ApproximateTime<M, M, M, M, M> ApproxSync5;
-  typedef sp::ApproximateTime<M, M, M, M, M, M> ApproxSync6;
-  typedef sp::ApproximateTime<M, M, M, M, M, M, M> ApproxSync7;
-  typedef sp::ApproximateTime<M, M, M, M, M, M, M, M> ApproxSync8;
-  typedef sp::ApproximateTime<M, M, M, M, M, M, M, M, M> ApproxSync9;
+  template <typename T>
+  struct tupleToSyncPolicy;
 
-  typedef boost::variant< typename Sync<ApproxSync2>::Ptr,
-                          typename Sync<ApproxSync3>::Ptr,
-                          typename Sync<ApproxSync4>::Ptr,
-                          typename Sync<ApproxSync5>::Ptr,
-                          typename Sync<ApproxSync6>::Ptr,
-                          typename Sync<ApproxSync7>::Ptr,
-                          typename Sync<ApproxSync8>::Ptr,
-                          typename Sync<ApproxSync9>::Ptr > VariantApproxSync;
-
-  template <std::size_t I, template <class... Args> class Tuple>
-  struct dunno<Tuple<Args...>>
+  template <typename... T>
+  struct tupleToSyncPolicy<std::tuple<T...>>
   {
-    using type = SynchronizerPolicyPtr<decltype(std::get <make_index_sequence<sizeof...(T)> >(std::declval<Tuple<Args...>>{}))...>;
+      using type = SynchronizerPolicy<T...>;
   };
 
-  using SynchronizerVariant = boost::variant< SynchronizerPolicyPtr< nullptr > >;
+  template <std::size_t I, typename... Args>
+  struct toSyncPolicy
+  {
+      using tuple_t = std::tuple<Args...>;
+
+      using i_seq = typename make_index_sequence<I>::type;
+
+      using type = typename tupleToSyncPolicy<typename subTuple<tuple_t, i_seq>::type>::type;
+  };
+
+  template <std::size_t I, typename... Args>
+  struct toSyncPolicies_
+  {
+      using type = tuple_cat< std::tuple< typename toSyncPolicy<I, Args...>::type >,
+                              typename toSyncPolicies_<I-1, Args...>::type>;
+  };
+
+  template <typename... Args>
+  struct toSyncPolicies_<1, Args...>
+  {
+    using type = std::tuple<>;
+  };
+
+  template <typename... Args>
+  struct toSyncPolicies : toSyncPolicies_<sizeof...(Args), Args... > { };
+
+  template <typename T>
+  struct toSynchronizerVariant;
+
+  template <typename... T>
+  struct toSynchronizerVariant<std::tuple<T...>>
+  {
+      using type = boost::variant< add_shared_ptr_t<message_filters::Synchronizer<T>>...>;
+  };
+
+  using SyncPolicies = typename toSyncPolicies<Args...>::type;
+
+  using SynchronizerVariant = typename toSynchronizerVariant< SyncPolicies >::type;
+
+  template<std::size_t I, typename... Ts, typename... Args>
+  void instantiate_subscribers(std::integral_constant<size_t, I>, std::tuple<Ts...>& t, const std::vector<std::string>& topics)
+  {
+    std::get<I>(t) =
+        make_shared< rm_shared_ptr_t<typename std::decay< decltype(std::get<I>(t) )>::type> >( topics[I] ) ;
+
+    instantiate_subscribers(std::integral_constant<size_t, I-1>(), t, topics);
+  }
+
+  template<typename... Ts, typename... Args>
+  void instantiate_subscribers(std::integral_constant<size_t, 0>, std::tuple<Ts...>& t, const std::vector<std::string>& topics)
+  {
+    std::get<0>(t) =
+        make_shared< rm_shared_ptr_t<typename std::decay< decltype(std::get<0>(t) )>::type> >( topics[0] ) ;
+  }
+
+  template<typename... Ts, typename... Args>
+  void instantiate_subscribers(std::tuple<Ts...>& t, const std::vector<std::string>& topics)
+  {
+    if (topics.size() != sizeof...(Args))
+    {
+      throw std::runtime_error("Provided " + std::to_string(topics.size()) + " topics"
+                               " for " + std::to_string(sizeof...(Args)) + " subscribers !");
+    }
+
+    instantiate_subscribers(std::integral_constant<size_t, sizeof...(Ts)-1>(), t, topics);
+  }
 
   /**
   * A pure virtual member.
@@ -421,30 +422,29 @@ protected:
   virtual bool initSubs();
   virtual bool initSyncSubs();
 
-  std::vector<std::string> _topics;
+  callbackPtr callback_ptr_;
 
-  std::tuple<add_shared_ptr_t<message_filters::Subscriber<Args>>...> subscribers_;
   boost::shared_ptr<SynchronizerVariant> synchronizer_;
 
-  boost::ptr_vector<Sub> _msg_subs;
-  boost::shared_ptr<VariantApproxSync> _approx_synchronizer;
+  /// @todo one q per topic
+  std::size_t q_size_ = 10;
+  ros::NodeHandle private_nh_ = ros::NodeHandle("~");
 
-  callbackPtr _callbackptr;
+  std::vector<std::string> topics_;
 
-  ros::NodeHandle _nh;
-  int _qsize;
+  std::tuple<add_shared_ptr_t<message_filters::Subscriber<Args>>...> subscribers_;
 };
 
-template <class M>
-SyncImplHandler<M>::SyncImplHandler() :
-  _nh("~"),
-  _qsize(10)
+template <typename... Args>
+SyncImplHandler<Args...>::SyncImplHandler() :
+  private_nh_("~"),
+  q_size_(10)
 {
-
+  //
 }
 
-template <class M>
-bool SyncImplHandler<M>::start()
+template <typename... Args>
+bool SyncImplHandler<Args...>::start()
 {
   initParam();
 
@@ -452,109 +452,132 @@ bool SyncImplHandler<M>::start()
 
   ok += initSyncSubs();
 
-  _callbackptr = boost::bind(&SyncImplHandler<M>::callback, this, _1);
+  callback_ptr_ = boost::bind(&SyncImplHandler<Args...>::callback, this, _1);
 
   return ok;
 }
 
-template <class M>
-void SyncImplHandler<M>::initParam()
+template <typename... Args>
+void SyncImplHandler<Args...>::initParam()
 {
-  std::vector<std::string> topics;
-  _nh.getParam("topics", topics);
-  _nh.param("queue_size", _qsize, _qsize);
-
-  for (size_t i=0; i<topics.size(); ++i)
+  if (!private_nh_.getParam("topics", topics_))
   {
-    if (topics[i] != "none" && topics[i] != "")
-    {
-      ROS_INFO_STREAM("Listening topic : " << topics[i]);
-      _topics.push_back(topics[i]);
-    }
+    ROS_ERROR("No topics parameter specified !");
+    return;
   }
 
-  ROS_INFO_STREAM("Synchronizer queue size : " << _qsize);
+  if (topics_.size() < 2)
+  {
+    ROS_ERROR("Only one topic specified !");
+    return;
+  }
+  else if (topics_.size() > 8)
+  {
+    ROS_ERROR("You can only synchronize up to 8 topics, %i requested !", topics_.size());
+    return;
+  }
+
+  private_nh_.param("queue_size", q_size_, q_size_);
+
+  ROS_INFO_STREAM("Synchronizer queue size : " << q_size_);
+  ROS_INFO("About to synchronize topics :\n");
+  for (const auto& t : topics_)
+    ROS_INFO("%s\n", t.c_str());
 }
 
-template <class M>
-bool SyncImplHandler<M>::initSubs()
+template <typename... Args>
+bool SyncImplHandler<Args...>::initSubs()
 {
-  for (size_t i=0; i<_topics.size(); ++i)
-    _msg_subs.push_back(new Sub(_nh, _topics[i], _qsize));
+  std::vector<std::string> topics = topics_;
+  topics.resize(SYNCHRONIZER_LIMIT, "");
 
-  if (_msg_subs.size()<2 || _msg_subs.size()>8)
-  {
-    ROS_ERROR("Can't listen to less than 2 topics neither more than 8 !");
-    return false;
-  }
+  instantiate_subscribers(subscribers_, topics);
+
   return true;
 }
 
-template <class M>
-void SyncImplHandler<M>::wrapCallback(const MPtr& a, const MPtr& b,
-                                      const MPtr& c, const MPtr& d,
-                                      const MPtr& e, const MPtr& f,
-                                      const MPtr& g, const MPtr& h)
+template <typename... Args>
+void SyncImplHandler<Args...>::wrapCallback(const MPtr& a, const MPtr& b,
+                                            const MPtr& c, const MPtr& d,
+                                            const MPtr& e, const MPtr& f,
+                                            const MPtr& g, const MPtr& h)
 {
   std::vector<MPtr> vecMPtr = filtered_vector<M>(a)(b)(c)(d)(e)(f)(g)(h);
 
-  _callbackptr(vecMPtr);
+  callback_ptr_(vecMPtr);
 }
 
-template <class M>
-bool SyncImplHandler<M>::initSyncSubs()
+template <typename... Args>
+bool SyncImplHandler<Args...>::initSyncSubs()
 {
-  switch (_msg_subs.size())
+
+  switch (topics_.size())
   {
     case 2:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync2>::Ptr(new typename Sync<ApproxSync2>::type(ApproxSync2(_qsize),
-                                                                                                                 _msg_subs[0], _msg_subs[1]))));
-      boost::get<typename Sync<ApproxSync2>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, MPtr(), MPtr(), MPtr(), MPtr(), MPtr(), MPtr()));
+      using Policy = typename std::decay<decltype( std::get<1>(std::declval<SyncPolicies>()) )>::type;
+      using Sync = Synchronizer<Policy>;
+      synchronizer_ = make_shared<SynchronizerVariant>( make_shared<Sync>(Policy(q_size_), topics_[0], topics_[1]) );
+      //
       break;
-
     case 3:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync3>::Ptr(new typename Sync<ApproxSync3>::type(ApproxSync3(_qsize),
-                                                                                                   _msg_subs[0], _msg_subs[1], _msg_subs[2]))));
-      boost::get<typename Sync<ApproxSync3>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, MPtr(), MPtr(), MPtr(), MPtr(), MPtr()));
+      using Policy = typename std::decay<decltype( std::get<2>(std::declval<SyncPolicies>()) )>::type;
+      using Sync = Synchronizer<Policy>;
+      synchronizer_ = make_shared<SynchronizerVariant>( make_shared<Sync>(Policy(q_size_), topics_[0], topics_[1], topics_[2]) );
+      //
       break;
+  }
 
-    case 4:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync4>::Ptr(new typename Sync<ApproxSync4>::type(ApproxSync4(_qsize),
-                                                                                     _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3]))));
-      boost::get<typename Sync<ApproxSync4>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, MPtr(), MPtr(), MPtr(), MPtr()));
-    break;
+//  switch (topics_.size())
+//  {
+//    case 2:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync2>::Ptr(new typename Sync<ApproxSync2>::type(ApproxSync2(q_size_),
+//                                                                                                                 _msg_subs[0], _msg_subs[1]))));
+//      boost::get<typename Sync<ApproxSync2>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, MPtr(), MPtr(), MPtr(), MPtr(), MPtr(), MPtr()));
+//      break;
 
-    case 5:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync5>::Ptr(new typename Sync<ApproxSync5>::type(ApproxSync5(_qsize),
-                                                                       _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4]))));
-      boost::get<typename Sync<ApproxSync5>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, MPtr(), MPtr(), MPtr()));
-      break;
+//    case 3:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync3>::Ptr(new typename Sync<ApproxSync3>::type(ApproxSync3(q_size_),
+//                                                                                                   _msg_subs[0], _msg_subs[1], _msg_subs[2]))));
+//      boost::get<typename Sync<ApproxSync3>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, MPtr(), MPtr(), MPtr(), MPtr(), MPtr()));
+//      break;
 
-    case 6:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync6>::Ptr(new typename Sync<ApproxSync6>::type(ApproxSync6(_qsize),
-                                                         _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5]))));
-      boost::get<typename Sync<ApproxSync6>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, MPtr(), MPtr()));
-      break;
+//    case 4:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync4>::Ptr(new typename Sync<ApproxSync4>::type(ApproxSync4(q_size_),
+//                                                                                     _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3]))));
+//      boost::get<typename Sync<ApproxSync4>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, MPtr(), MPtr(), MPtr(), MPtr()));
+//    break;
 
-    case 7:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync7>::Ptr(new typename Sync<ApproxSync7>::type(ApproxSync7(_qsize),
-                                           _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5], _msg_subs[6]))));
-      boost::get<typename Sync<ApproxSync7>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, _7, MPtr()));
-      break;
+//    case 5:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync5>::Ptr(new typename Sync<ApproxSync5>::type(ApproxSync5(q_size_),
+//                                                                       _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4]))));
+//      boost::get<typename Sync<ApproxSync5>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, MPtr(), MPtr(), MPtr()));
+//      break;
 
-    case 8:
-      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync8>::Ptr(new typename Sync<ApproxSync8>::type(ApproxSync8(_qsize),
-                             _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5], _msg_subs[6], _msg_subs[7]))));
-      boost::get<typename Sync<ApproxSync8>::Ptr>(*_approx_synchronizer)->registerCallback(
-                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, _7, _8));
-      break;
-    }
+//    case 6:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync6>::Ptr(new typename Sync<ApproxSync6>::type(ApproxSync6(q_size_),
+//                                                         _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5]))));
+//      boost::get<typename Sync<ApproxSync6>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, MPtr(), MPtr()));
+//      break;
+
+//    case 7:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync7>::Ptr(new typename Sync<ApproxSync7>::type(ApproxSync7(q_size_),
+//                                           _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5], _msg_subs[6]))));
+//      boost::get<typename Sync<ApproxSync7>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, _7, MPtr()));
+//      break;
+
+//    case 8:
+//      _approx_synchronizer.reset(new VariantApproxSync(typename Sync<ApproxSync8>::Ptr(new typename Sync<ApproxSync8>::type(ApproxSync8(q_size_),
+//                             _msg_subs[0], _msg_subs[1], _msg_subs[2], _msg_subs[3], _msg_subs[4], _msg_subs[5], _msg_subs[6], _msg_subs[7]))));
+//      boost::get<typename Sync<ApproxSync8>::Ptr>(*_approx_synchronizer)->registerCallback(
+//                    boost::bind(&SyncImplHandler<M>::wrapCallback, this, _1, _2, _3, _4, _5, _6, _7, _8));
+//      break;
+//    }
   return true;
 }
 
