@@ -1,33 +1,24 @@
 <?xml version="1.0"?>
-<package>
+<package format="2">
   <name>ros_msgs_sync</name>
   <version>0.0.0</version>
   <description>
-        The ros_img_sync package
-
-  This package provides the class SyncImageHandler which synchronizes image topics callback (up to 8).
-
-  Its pure virtual callback allows one to inherits from SyncImageHandler and implement its own callback.
-
-  An example is provided to show how to inherit and define the callback.
+    The ros_img_sync package
+    This package provides the class SubcriberParametersBase which synchronizes ros messages (up to 9).
   </description>
 
   <maintainer email="jeremie.deray@pal-robotics.com">Jeremie Deray</maintainer>
 
-  <license>Modified BSD</license>
+  <license>Apache-2.0</license>
 
   <author email="jeremie.deray@pal-robotics.com">Jeremie Deray</author>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>rospy</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>cv_bridge</build_depend>
-  <build_depend>image_transport</build_depend>
-  <run_depend>roscpp</run_depend>
-  <run_depend>rospy</run_depend>
-  <run_depend>std_msgs</run_depend>
-  <run_depend>cv_bridge</run_depend>
-  <run_depend>image_transport</run_depend>
+
+  <depend>cv_bridge</depend>
+  <depend>image_transport</depend>
+  <depend>message_filters</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
 
 </package>

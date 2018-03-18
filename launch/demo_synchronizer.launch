@@ -1,0 +1,20 @@
+<launch>
+
+  <arg name="dummy_topic_0" default="dummy_topic_0" />
+  <arg name="dummy_topic_1" default="dummy_topic_1" />
+  <arg name="dummy_topic_2" default="dummy_topic_2" />
+  <arg name="dummy_topic_3" default="dummy_topic_3" />
+
+  <node name="dummy_pub_0" pkg="rostopic" type="rostopic" args="pub -r 15 $(arg dummy_topic_0) sensor_msgs/Image '{header: auto}' -s" />
+  <node name="dummy_pub_1" pkg="rostopic" type="rostopic" args="pub -r 17 $(arg dummy_topic_1) sensor_msgs/CameraInfo '{header: auto}' -s" />
+  <node name="dummy_pub_2" pkg="rostopic" type="rostopic" args="pub -r 19 $(arg dummy_topic_2) sensor_msgs/Image '{header: auto}' -s" />
+  <node name="dummy_pub_3" pkg="rostopic" type="rostopic" args="pub -r 21 $(arg dummy_topic_3) sensor_msgs/CameraInfo '{header: auto}' -s" />
+
+  <node pkg="ros_msgs_sync" type="demo_synchronizer" name="demo_synchronizer" output="screen">
+    <remap from="~synchronized_topic_0" to="$(arg dummy_topic_0)"/>
+    <remap from="~synchronized_topic_1" to="$(arg dummy_topic_1)"/>
+    <remap from="~synchronized_topic_2" to="$(arg dummy_topic_2)"/>
+    <remap from="~synchronized_topic_3" to="$(arg dummy_topic_3)"/>
+  </node>
+
+</launch>
