@@ -65,6 +65,18 @@ struct ImageSubcriberParameters : SubcriberParametersBase
   image_transport::TransportHints transport_hints = image_transport::TransportHints();
 };
 
+template <typename T>
+struct SubscriberParametersTraits
+{
+  using type = SubcriberParameters;
+};
+
+template <>
+struct SubscriberParametersTraits<sensor_msgs::Image>
+{
+  using type = ImageSubcriberParameters;
+};
+
 template <typename T> struct Subscriber {
   using type  = message_filters::Subscriber<T>;
   using msg_t = T;
@@ -79,26 +91,31 @@ template <> struct Subscriber<sensor_msgs::Image> {
 
 template <typename T> using SubscriberPtr = typename Subscriber<T>::Ptr;
 
-namespace detail{
+namespace detail {
+
 template <typename T>
 struct MakeSubscriber{
-  template <typename... Args>
-  static meta::add_shared_ptr_t<T> make_subscriber(ros::NodeHandle& nh, Args&&... args)
+  static meta::add_shared_ptr_t<T> make_subscriber(ros::NodeHandle& nh,
+                                                   const std::string& topic,
+                                                   const SubcriberParameters& params)
   {
-    return meta::make_shared<T>(nh, std::forward<Args>(args)...);
+    return meta::make_shared<T>(nh, topic, params.queue_size_,
+                                params.transport_hints, params.callback_queue);
   }
 };
 
 template <>
 struct MakeSubscriber<typename Subscriber<sensor_msgs::Image>::type>{
-  template <typename... Args>
-  static SubscriberPtr<sensor_msgs::Image> make_subscriber(ros::NodeHandle& nh, Args&&... args)
+  static SubscriberPtr<sensor_msgs::Image> make_subscriber(ros::NodeHandle& nh,
+                                                           const std::string& topic,
+                                                           const ImageSubcriberParameters& params)
   {
     image_transport::ImageTransport it(nh);
-    image_transport::TransportHints th;
-    return meta::make_shared<typename Subscriber<sensor_msgs::Image>::type>(it, std::forward<Args>(args)..., th);
+    return meta::make_shared<typename Subscriber<sensor_msgs::Image>::type>(
+          it, topic, params.queue_size_, params.transport_hints);
   }
 };
+
 } /* namespace detail */
 
 /**
@@ -150,6 +167,8 @@ public:
 
   using Subscribers = std::tuple<SubscriberPtr<Args>...>;
 
+  using SubscribersParameters = std::tuple<typename SubscriberParametersTraits<Args>::type...>;
+
   using Messages = std::tuple<boost::shared_ptr<const Args>...>;
 
 public:
@@ -165,11 +184,7 @@ public:
   virtual ~MessageSynchronizerBase() = default;
 
   bool start();
-
-  inline const std::vector<std::string>& getTopics() const noexcept
-  {
-    return topics_;
-  }
+  bool stop();
 
   inline const ros::NodeHandle& getNodeHandle() const noexcept
   {
@@ -181,18 +196,47 @@ public:
     return messages_;
   }
 
+  void wait() const
+  {
+    while (ros::ok() && !first_received_)
+    {
+      ros::Rate(30).sleep();
+    }
+  }
+
+  bool wait(const ros::Duration d) const
+  {
+    const auto start = ros::Time::now();
+    while (ros::ok() && !first_received_ ||
+           (ros::Time::now() - start) < d)
+    {
+      ros::Rate(30).sleep();
+    }
+    return first_received_;
+  }
+
+  std::size_t getSyncQueueSize() const noexcept
+  {
+    return sync_q_size_;
+  }
+
+  void setSyncQueueSize(const std::size_t size)
+  {
+    sync_q_size_ = size;
+  }
+
 protected:
 
   bool subs_instantiate_ = false;
+  bool first_received_ = false;
 
   std::size_t sync_q_size_ = 10;
   ros::NodeHandle nh_ = ros::NodeHandle("~");
 
-  std::vector<std::string> topics_;
-  meta::RepTup<num_topics, SubcriberParameters> sub_params_;
-
   /// @brief Tuple of SubscriberPtr
   Subscribers subscribers_;
+
+  SubscribersParameters parameters_;
 
   /// @brief Topic synchronizer
   SynchronizerPtr synchronizer_;
@@ -221,28 +265,38 @@ public:
   template <std::size_t I>
   void setQueueSize(const std::size_t queue_size)
   {
-    std::get<I>(sub_params_).queue_size_ = queue_size;
-  }
-
-  template <std::size_t I>
-  auto getSubscriberPtr()
-  -> decltype(std::get<I>(std::declval<type>().subscribers_))
-  {
-    return std::get<I>(subscribers_);
+    std::get<I>(parameters_).queue_size_ = queue_size;
   }
 
   template <std::size_t I>
   auto getSubscriberPtr() const
-  -> decltype(getSubscriberPtr<I>())
+  -> const typename std::tuple_element<I, Subscribers>::type&
   {
-    return getSubscriberPtr<I>();
+    static_assert(I <= num_topics, "Index I exceed number of subscribers !");
+    return std::get<I>(subscribers_);
+  }
+
+  template <std::size_t I>
+  auto getSubscriberParameters() const
+  -> const typename std::tuple_element<I, SubscribersParameters>::type&
+  {
+    static_assert(I <= num_topics, "Index I exceed number of subscribers !");
+    return std::get<I>(parameters_);
+  }
+
+  template <std::size_t I>
+  auto getSubscriberParameters()
+  -> typename std::tuple_element<I, SubscribersParameters>::type&
+  {
+    static_assert(I <= num_topics, "Index I exceed number of subscribers !");
+    return std::get<I>(parameters_);
   }
 };
 
 template <template <typename...> class SyncPolicy, typename... Args>
 template <typename... SubParams>
-MessageSynchronizerBase<SyncPolicy, Args...>::MessageSynchronizerBase(SubParams&&... topics)
-  : sub_params_(std::make_tuple(std::forward<SubParams>(topics)...))
+MessageSynchronizerBase<SyncPolicy, Args...>::MessageSynchronizerBase(SubParams&&... params)
+  : parameters_(std::make_tuple(std::forward<SubParams>(params)...))
 {
   static_assert(sizeof...(SubParams) == num_topics,
                 "The number of provided topics mismatches the number of template parameters.");
@@ -268,6 +322,26 @@ bool MessageSynchronizerBase<SyncPolicy, Args...>::start()
   }
 
   return ok;
+}
+
+struct PtrReseter
+{
+  template <typename T>
+  void operator ()(T t) { t.reset(); }
+};
+
+template <template <typename...> class SyncPolicy,typename... Args>
+bool MessageSynchronizerBase<SyncPolicy, Args...>::stop()
+{
+  if (subs_instantiate_)
+  {
+    synchronizer_.reset();
+    subscribers_ = Subscribers{};
+    subs_instantiate_ = false;
+    first_received_ = false;
+  }
+
+  return !subs_instantiate_;
 }
 
 template <template <typename...> class SyncPolicy,typename... Args>
@@ -302,6 +376,8 @@ void MessageSynchronizerBase<SyncPolicy, Args...>::callback(const boost::shared_
 
   ROS_INFO_STREAM("[Default callback] Received " << sizeof...(Args) << " synchronized messages with stamps :");
   ROS_INFO_STREAM(ss.str() << "\n");
+
+  first_received_ = true;
 }
 
 template <template <typename...> class SyncPolicy,typename... Args>
@@ -312,7 +388,7 @@ void MessageSynchronizerBase<SyncPolicy, Args...>::instantiateSubscribers(std::i
 
   std::get<I>(subscribers_) =
       detail::MakeSubscriber<SubTyp>::make_subscriber(
-        nh_, "synchronized_topic_"+std::to_string(I), std::get<I>(sub_params_).queue_size_);
+        nh_, "synchronized_topic_"+std::to_string(I), std::get<I>(parameters_));
 
   instantiateSubscribers(std::integral_constant<size_t, I-1>());
 }
@@ -324,7 +400,7 @@ void MessageSynchronizerBase<SyncPolicy, Args...>::instantiateSubscribers(std::i
 
   std::get<0>(subscribers_) =
       detail::MakeSubscriber<SubTyp>::make_subscriber(
-        nh_, "synchronized_topic_0", std::get<0>(sub_params_).queue_size_);
+        nh_, "synchronized_topic_0", std::get<0>(parameters_));
 }
 } /* namespace ros_msgs_sync */
 
