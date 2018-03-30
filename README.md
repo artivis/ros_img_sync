@@ -17,7 +17,7 @@ the virtual function `callback()` to manage to synchronized callback messages.
 -   Bug / feature tracker: https://github.com/artivis/ros_msgs_sync/issues
 -   Source: git https://github.com/artivis/ros_msgs_sync (branch: master)
 
-[![Build Status](https://travis-ci.org/name/package_name.svg?branch=master)](https://travis-ci.org/name/package_name)
+[![Build Status](https://travis-ci.org/artivis/ros_msgs_sync.svg?branch=master)](https://travis-ci.org/artivis/ros_msgs_sync)
 ---
 
 ## Quick Start
