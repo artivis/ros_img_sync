@@ -15,10 +15,10 @@ int main(int argc, char** argv)
                                                     ros_msgs_sync::SubcriberParameters(2),
                                                     3, 4);
 
-  ROS_INFO_STREAM("Param 0 : " << msg_sync.getSubscriberParameters<0>().queue_size_);
-  ROS_INFO_STREAM("Param 1 : " << msg_sync.getSubscriberParameters<1>().queue_size_);
-  ROS_INFO_STREAM("Param 2 : " << msg_sync.getSubscriberParameters<2>().queue_size_);
-  ROS_INFO_STREAM("Param 3 : " << msg_sync.getSubscriberParameters<3>().queue_size_);
+  ROS_INFO_STREAM("Param 0 : " << msg_sync.getSubscriberParameters<0>().queue_size);
+  ROS_INFO_STREAM("Param 1 : " << msg_sync.getSubscriberParameters<1>().queue_size);
+  ROS_INFO_STREAM("Param 2 : " << msg_sync.getSubscriberParameters<2>().queue_size);
+  ROS_INFO_STREAM("Param 3 : " << msg_sync.getSubscriberParameters<3>().queue_size);
 
   ROS_INFO("Starting synchronization !");
   msg_sync.start();
@@ -46,13 +46,13 @@ int main(int argc, char** argv)
 
   msg_sync.setQueueSize<0>(10);
   msg_sync.setQueueSize<1>(10);
-  msg_sync.getSubscriberParameters<2>().queue_size_ = 10;
-  msg_sync.getSubscriberParameters<3>().queue_size_ = 10;
+  msg_sync.getSubscriberParameters<2>().queue_size = 10;
+  msg_sync.getSubscriberParameters<3>().queue_size = 10;
 
-  ROS_INFO_STREAM("Param 0 : " << msg_sync.getSubscriberParameters<0>().queue_size_);
-  ROS_INFO_STREAM("Param 1 : " << msg_sync.getSubscriberParameters<1>().queue_size_);
-  ROS_INFO_STREAM("Param 2 : " << msg_sync.getSubscriberParameters<2>().queue_size_);
-  ROS_INFO_STREAM("Param 3 : " << msg_sync.getSubscriberParameters<3>().queue_size_);
+  ROS_INFO_STREAM("Param 0 : " << msg_sync.getSubscriberParameters<0>().queue_size);
+  ROS_INFO_STREAM("Param 1 : " << msg_sync.getSubscriberParameters<1>().queue_size);
+  ROS_INFO_STREAM("Param 2 : " << msg_sync.getSubscriberParameters<2>().queue_size);
+  ROS_INFO_STREAM("Param 3 : " << msg_sync.getSubscriberParameters<3>().queue_size);
 
   ROS_INFO("Starting synchronization !");
   msg_sync.start();
