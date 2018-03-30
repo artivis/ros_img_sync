@@ -50,6 +50,14 @@ As a minimal example, we will synchronize a `sensor_msgs::Image` with an associa
 #include "ros_msgs_sync/ros_msgs_sync.h"
 #include <ros/ros.h>
 
+/// Typef the synchronizer
+/// Template arguments
+/// 1. synchronization policy
+/// 2-9. message types to be synchronized
+using MySync =
+  ros_msgs_sync::MessageSynchronizerBase<message_filters::sync_policies::ApproximateTime,
+                                         sensor_msgs::Image, sensor_msgs::CameraInfo>;
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "demo_synchronizer");
@@ -57,7 +65,7 @@ int main(int argc, char** argv)
   std::size_t image_queue = 5;
   std::size_t camera_info_queue = 5;
 
-  ros_msgs_sync::SyncApproxImagesWithInfo msg_sync(image_queue, camera_info_queue);
+  MySync msg_sync(image_queue, camera_info_queue);
 
   msg_sync.start();
 
@@ -81,13 +89,13 @@ That's it !
 
 For more details, an example is available in the `example` folder of the package together with its launch file.
 
-#### Notice
+### Notice
 
-##### Topics
+##### Topics :
 Subscribers are listening to the topics :  
 -   `~synchronized_topic_0`
 -   `~synchronized_topic_1`
--   ... 
+-   ...
 -   `~synchronized_topic_N`
 
 thus they need to be remapped, e.g. from a launch file
@@ -95,7 +103,7 @@ thus they need to be remapped, e.g. from a launch file
 <remap from="~synchronized_topic_0" to="my_camera_topic"/>
 ```
 
-##### Subscribers
+##### Subscribers :
 
 The class automatically instantiate a `image_transport::SubscriberFilter` for image messages - configurable through a `ImageSubcriberParameters` - while uses a `message_filters::Subscriber` for any other message types - configurable through a `SubcriberParameters`.
 
@@ -104,6 +112,14 @@ The class automatically instantiate a `image_transport::SubscriberFilter` for im
 ```cpp
 #include "ros_msgs_sync/ros_msgs_sync.h"
 #include <ros/ros.h>
+
+/// Typef the synchronizer
+/// Template arguments
+/// 1. synchronization policy
+/// 2-9. message types to be synchronized
+using MySync =
+  ros_msgs_sync::MessageSynchronizerBase<message_filters::sync_policies::ApproximateTime,
+                                         sensor_msgs::Image, sensor_msgs::CameraInfo>;
 
 int main(int argc, char** argv)
 {
@@ -117,7 +133,7 @@ int main(int argc, char** argv)
   // See ros::TransportHints documentation for more information.
   ros::TransportHints transport_hints;
 
-  ros_msgs_sync::SubcriberParameters camera_info_sub_params;
+  MySync camera_info_sub_params;
   camera_info_sub_params.queue_size = 5;
   camera_info_sub_params.transport_hints = transport_hints;
   camera_info_sub_params.callback_queue = nullptr;
@@ -162,7 +178,6 @@ SyncApprox4ImagesWithInfo; // Sync sensor_msgs::Image + sensor_msgs::CameraInfo 
 SyncExactImagesWithInfo; // Sync sensor_msgs::Image + sensor_msgs::CameraInfo
 ```
 
-To define a custom synchronizer, nothing's easier.  
 Notice the following helper types:  
 
 ```cpp
@@ -171,7 +186,7 @@ MessageSynchronizerApprox<MsgType0, MsgType1, etc...>;
 MessageSynchronizerExact<MsgType0, MsgType1, etc...>;
 ```
 
-Say one wants to synchronize 3 `sensor_msgs::PointCloud2` :
+<!--Say one wants to synchronize 3 `sensor_msgs::PointCloud2` :
 
 ```cpp
 using SyncApprox3PointCloud = MessageSynchronizerApprox<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2,sensor_msgs::PointCloud2>;
@@ -179,6 +194,7 @@ using SyncApprox3PointCloud = MessageSynchronizerApprox<sensor_msgs::PointCloud2
 SyncApprox3PointCloud my_pcl_sync;
 
 ```
+-->
 
 ## Contributing
 
