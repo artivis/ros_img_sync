@@ -78,18 +78,24 @@ int main(int argc, char** argv)
 ```
 
 That's it !  
-Notice that the subscribers are listening to the topics :  
+
+For more details, an example is available in the `example` folder of the package together with its launch file.
+
+#### Notice
+
+##### Topics
+Subscribers are listening to the topics :  
 -   `~synchronized_topic_0`
--   `~synchronized_topic_1`  
+-   `~synchronized_topic_1`
+-   ... 
+-   `~synchronized_topic_N`
 
 thus they need to be remapped, e.g. from a launch file
 ```xml
 <remap from="~synchronized_topic_0" to="my_camera_topic"/>
 ```
 
-For more details, an example is available in the `example` folder of the package together with its launch file.
-
-#### Notice
+##### Subscribers
 
 The class automatically instantiate a `image_transport::SubscriberFilter` for image messages - configurable through a `ImageSubcriberParameters` - while uses a `message_filters::Subscriber` for any other message types - configurable through a `SubcriberParameters`.
 
